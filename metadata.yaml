@@ -1,4 +1,4 @@
 homepage: "https://trackinghippo.io"
 versions:
-  - sha: <sha>
+  - sha: de83e0fac78908a0c60882063c4a0da7b3147747
     changeNotes: Initial release of Unique Event ID variable template.
