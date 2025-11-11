@@ -17,6 +17,9 @@ ___INFO___
   "description": "Generates a persistent unique event ID that is stored in localStorage and available via gtm.uniqueEventId. The ID is generated once per browser and reused across sessions.",
   "containerContexts": [
     "WEB"
+  ],
+  "categories": [
+    "UTILITY"
   ]
 }
 
