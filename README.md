@@ -137,7 +137,7 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## License
 
-This template is provided as-is for use in Google Tag Manager.
+This GTM Variable is developed under the Apache 2.0 license.
 
 ## Support
 
