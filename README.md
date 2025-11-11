@@ -11,8 +11,6 @@ This GTM variable template creates a unique identifier that persists across brow
 - **Persistent ID**: Generates a unique ID once and stores it in localStorage
 - **Browser-specific**: Each browser gets its own unique ID
 - **Automatic dataLayer integration**: Optionally sets `gtm.uniqueEventId` in the dataLayer
-- **Customizable storage key**: Configure the localStorage key name
-- **Privacy-friendly**: Stored only in the user's browser, not sent anywhere automatically
 
 ## Installation
 
@@ -41,7 +39,6 @@ This GTM variable template creates a unique identifier that persists across brow
 2. Click **Variable Configuration**
 3. Select **Unique Event ID** from the Custom category
 4. Configure the settings:
-   - **Storage Key**: The localStorage key (default: `gtm_unique_event_id`)
    - **Set gtm.uniqueEventId property**: Check to automatically populate `gtm.uniqueEventId` in the dataLayer
 5. Name your variable (e.g., "Unique Event ID")
 6. Save the variable
@@ -76,11 +73,6 @@ dataLayer.push({
 ```
 
 ## Configuration Options
-
-### Storage Key
-- **Default**: `gtm_unique_event_id`
-- **Purpose**: The key name used in localStorage
-- **When to change**: If you have naming conflicts or prefer a different key name
 
 ### Set gtm.uniqueEventId property
 - **Default**: Checked (enabled)
@@ -149,4 +141,4 @@ This template is provided as-is for use in Google Tag Manager.
 
 ## Support
 
-For issues, questions, or feature requests, please open an issue on the [GitHub repository](https://github.com/michaelroef/gtm-unique-event-id-variable).
+For issues, questions, or feature requests, please open an issue on the [GitHub repository](https://github.com/trackinghippo-io/gtm-unique-event-id-variable).
