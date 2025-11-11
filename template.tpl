@@ -43,16 +43,22 @@ ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 const generateRandom = require('generateRandom');
 const createQueue = require('createQueue');
 const copyFromDataLayer = require('copyFromDataLayer');
+const getTimestampMillis = require('getTimestampMillis');
 
 // Check if ID already exists in dataLayer for this pageload
+// Only reuse if it's a valid string with the expected format
 let uniqueId = copyFromDataLayer('gtm.uniqueEventId');
 
-// If no ID exists, generate a new one
-if (!uniqueId) {
-  // Generate a unique ID using timestamp and random number
-  const timestamp = require('getTimestampMillis')();
-  const randomNum = generateRandom(100000, 999999);
-  uniqueId = timestamp + '-' + randomNum;
+// Validate the existing ID - must be a string with the timestamp-random-random format
+const isValidId = uniqueId && typeof uniqueId === 'string' && uniqueId.indexOf('-') > 0;
+
+// If no valid ID exists, generate a new one
+if (!isValidId) {
+  // Generate a globally unique ID using timestamp and multiple random numbers
+  const timestamp = getTimestampMillis();
+  const randomNum1 = generateRandom(100000, 999999);
+  const randomNum2 = generateRandom(100000, 999999);
+  uniqueId = timestamp + '-' + randomNum1 + '-' + randomNum2;
 
   // Push to dataLayer to store for this pageload
   const dataLayerPush = createQueue('dataLayer');
@@ -60,7 +66,7 @@ if (!uniqueId) {
     'gtm.uniqueEventId': uniqueId
   });
 } else if (data.setGtmProperty) {
-  // If ID exists and user wants to ensure it's set, push to dataLayer
+  // If valid ID exists and user wants to ensure it's set, push to dataLayer
   const dataLayerPush = createQueue('dataLayer');
   dataLayerPush({
     'gtm.uniqueEventId': uniqueId

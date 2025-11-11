@@ -8,7 +8,8 @@ This GTM variable template creates a unique identifier for each page load using 
 
 ## Features
 
-- **Per-pageload ID**: Generates a unique ID for each page load
+- **Globally unique ID**: Generates a unique ID for each page load that is unique across all browsers and users
+- **Per-pageload generation**: New ID created on every page load
 - **DataLayer storage**: Stores the ID in the GTM dataLayer for the current page session
 - **Automatic dataLayer integration**: Optionally sets `gtm.uniqueEventId` in the dataLayer
 
@@ -82,11 +83,16 @@ dataLayer.push({
 ## Technical Details
 
 ### ID Format
-The generated ID follows the format: `{timestamp}-{random}`
+The generated ID follows the format: `{timestamp}-{random1}-{random2}`
 - **timestamp**: Unix timestamp in milliseconds (13 digits)
-- **random**: 6-digit random number
+- **random1**: 6-digit random number
+- **random2**: 6-digit random number
 
-Example: `1699660800000-123456`
+Example: `1699660800000-123456-789012`
+
+This format ensures global uniqueness across all browsers and users by combining:
+- Time-based uniqueness (millisecond precision)
+- Two independent random components (1 trillion possible combinations per millisecond)
 
 ### Storage
 - Uses GTM `dataLayer`
