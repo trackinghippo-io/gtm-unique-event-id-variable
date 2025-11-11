@@ -1,15 +1,15 @@
 # GTM Unique Event ID Variable
 
-A Google Tag Manager (GTM) variable template that generates a persistent unique event ID stored in localStorage and accessible via `gtm.uniqueEventId`.
+A Google Tag Manager (GTM) variable template that generates a unique event ID per pageload stored in the GTM dataLayer and accessible via `gtm.uniqueEventId`.
 
 ## Overview
 
-This GTM variable template creates a unique identifier that persists across browser sessions using localStorage. Once generated, the same ID is reused for all subsequent page loads in that browser, making it perfect for tracking user sessions or creating persistent user identifiers.
+This GTM variable template creates a unique identifier for each page load using the GTM dataLayer. A new ID is generated on every page load, making it perfect for tracking individual page views or events within a session.
 
 ## Features
 
-- **Persistent ID**: Generates a unique ID once and stores it in localStorage
-- **Browser-specific**: Each browser gets its own unique ID
+- **Per-pageload ID**: Generates a unique ID for each page load
+- **DataLayer storage**: Stores the ID in the GTM dataLayer for the current page session
 - **Automatic dataLayer integration**: Optionally sets `gtm.uniqueEventId` in the dataLayer
 
 ## Installation
@@ -55,13 +55,13 @@ Once created, you can use this variable in any tag, trigger, or other variable:
 **1. Send with Google Analytics events:**
 ```javascript
 // The ID will be available in gtm.uniqueEventId
-// Use it as a custom dimension
+// Use it as a custom dimension for per-pageload tracking
 ```
 
-**2. Track across sessions:**
+**2. Track page views uniquely:**
 ```javascript
-// The same ID persists across browser sessions
-// Perfect for linking user behavior over time
+// Each page load gets a new unique ID
+// Perfect for identifying individual page views within a session
 ```
 
 **3. Custom event tracking:**
@@ -89,47 +89,44 @@ The generated ID follows the format: `{timestamp}-{random}`
 Example: `1699660800000-123456`
 
 ### Storage
-- Uses browser `localStorage`
-- Persists across browser sessions
-- Cleared when user clears browser data
-- Domain-specific (not shared across domains)
+- Uses GTM `dataLayer`
+- Only persists for the current page load
+- Resets on each new page load
+- No browser storage required
 
 ### Permissions
 The template requires the following GTM permissions:
-- **Access Local Storage**: To read/write the unique ID
 - **Access Globals**: To access and modify the dataLayer
-- **Read Data Layer**: To read the `gtm` object
+- **Read Data Layer**: To read the `gtm.uniqueEventId` value
 
 ## Privacy Considerations
 
-- The unique ID is generated and stored entirely in the user's browser
+- The unique ID is generated and stored only in the GTM dataLayer for the current page load
 - No data is sent to external servers by this template
-- The ID is domain-specific and not shared across websites
-- Users can clear the ID by clearing their browser's localStorage
-- Consider your local privacy laws (GDPR, CCPA, etc.) when using persistent identifiers
+- The ID does not persist across page loads or sessions
+- No browser storage is used
+- Consider your local privacy laws (GDPR, CCPA, etc.) when using tracking identifiers
 
 ## Browser Compatibility
 
 This template works in all browsers that support:
-- localStorage (all modern browsers)
-- Google Tag Manager
+- Google Tag Manager (all modern browsers)
 
 ## Troubleshooting
 
-### ID keeps changing on each page load
-- Check that localStorage is not disabled in the browser
-- Verify the storage key is consistent across your configuration
-- Check browser console for any localStorage errors
+### ID is the same across multiple page loads
+- This is expected behavior - each page load should generate a new unique ID
+- If the ID is persisting, check if you have caching or single-page application logic that's preventing a full page reload
 
 ### gtm.uniqueEventId is undefined
 - Ensure "Set gtm.uniqueEventId property" is checked in the variable configuration
 - Verify the variable fires before you try to access the value
 - Check that the dataLayer is available
 
-### ID not persisting across sessions
-- Verify localStorage is enabled in the user's browser
-- Check that the user isn't in private/incognito mode (localStorage may not persist)
-- Ensure browser cookies/data aren't being automatically cleared
+### ID is different for each event on the same page
+- The ID should be consistent within a single page load
+- Ensure you're using the same variable reference
+- Check if the variable is being called multiple times correctly
 
 ## Contributing
 

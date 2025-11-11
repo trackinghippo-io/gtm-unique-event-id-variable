@@ -14,7 +14,7 @@ ___INFO___
   "version": 1,
   "securityGroups": [],
   "displayName": "Unique Event ID by TrackingHippo.io",
-  "description": "Generates a persistent unique event ID that is stored in localStorage and available via gtm.uniqueEventId. The ID is generated once per browser and reused across sessions.",
+  "description": "Generates a unique event ID per pageload that is stored in the GTM dataLayer and available via gtm.uniqueEventId. The ID is generated once per page load.",
   "containerContexts": [
     "WEB"
   ],
@@ -40,15 +40,12 @@ ___TEMPLATE_PARAMETERS___
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
-const localStorage = require('localStorage');
 const generateRandom = require('generateRandom');
 const createQueue = require('createQueue');
+const copyFromDataLayer = require('copyFromDataLayer');
 
-// Get the storage key from template parameters
-const storageKey = 'gtm_unique_event_id';
-
-// Try to get existing ID from localStorage
-let uniqueId = localStorage.getItem(storageKey);
+// Check if ID already exists in dataLayer for this pageload
+let uniqueId = copyFromDataLayer('gtm.uniqueEventId');
 
 // If no ID exists, generate a new one
 if (!uniqueId) {
@@ -57,12 +54,13 @@ if (!uniqueId) {
   const randomNum = generateRandom(100000, 999999);
   uniqueId = timestamp + '-' + randomNum;
 
-  // Store it in localStorage
-  localStorage.setItem(storageKey, uniqueId);
-}
-
-// If the user wants to set gtm.uniqueEventId, push to dataLayer
-if (data.setGtmProperty) {
+  // Push to dataLayer to store for this pageload
+  const dataLayerPush = createQueue('dataLayer');
+  dataLayerPush({
+    'gtm.uniqueEventId': uniqueId
+  });
+} else if (data.setGtmProperty) {
+  // If ID exists and user wants to ensure it's set, push to dataLayer
   const dataLayerPush = createQueue('dataLayer');
   dataLayerPush({
     'gtm.uniqueEventId': uniqueId
@@ -140,45 +138,18 @@ ___WEB_PERMISSIONS___
   {
     "instance": {
       "key": {
-        "publicId": "access_local_storage",
+        "publicId": "read_data_layer",
         "versionId": "1"
       },
       "param": [
         {
-          "key": "keys",
+          "key": "keyPatterns",
           "value": {
             "type": 2,
             "listItem": [
               {
-                "type": 3,
-                "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "key"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  }
-                ],
-                "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "gtm_unique_event_id"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  }
-                ]
+                "type": 1,
+                "string": "gtm.uniqueEventId"
               }
             ]
           }
