@@ -1,5 +1,5 @@
 homepage: "https://trackinghippo.io"
 documentation: "https://github.com/trackinghippo-io/gtm-unique-event-id-variable/blob/main/README.md"
 versions:
-  - sha: 485d60ce8d45494e6a02e28b2ee7983ae4aff4b9
+  - sha: e5510e97ae66c91f956532f88eaf5dadd1a42d67
     changeNotes: Initial release of Unique Event ID variable template.
