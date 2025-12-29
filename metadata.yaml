@@ -1,7 +1,7 @@
 homepage: "https://trackinghippo.io"
 documentation: "https://github.com/trackinghippo-io/gtm-unique-event-id-variable/blob/main/README.md"
 versions:
-  - sha: master
+  - sha: 7dbd2a751cac0070450e51651ead820bd734f1d09df27de369262b581ffba375
     changeNotes: Refactored to use window caching for robustness and UUID v4 format. Fixed compatibility issue with padStart.
   - sha: e5510e97ae66c91f956532f88eaf5dadd1a42d67
     changeNotes: Initial release of Unique Event ID variable template.
