@@ -69,7 +69,20 @@ const generateUUID = () => {
 
   // Incorporate timestamp into the first block (8 chars)
   // detailed timestamp allows for chronological sorting if needed
-  const timeHex = timestamp.toString(16).padStart(12, '0').slice(-8);
+  let timeHex = timestamp.toString(16);
+  // Manual padding for compatibility (no padStart)
+  while (timeHex.length < 8) {
+    timeHex = '0' + timeHex;
+  }
+  // Ensure we only take the last 8 chars if it's somehow longer (unlikely for current timestamps)
+  // or exactly the 8 we need.
+  // Actually, we want to align it such that it fills the block. 
+  // Let's just ensure it's at least 8 chars long with leading zeros, then take the last 8.
+  if (timeHex.length < 8) {
+      // already padded above
+  } else {
+      timeHex = timeHex.slice(-8);
+  }
   
   return (
     timeHex + '-' +
