@@ -40,40 +40,67 @@ ___TEMPLATE_PARAMETERS___
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
-const generateRandom = require('generateRandom');
+const copyFromWindow = require('copyFromWindow');
+const setInWindow = require('setInWindow');
 const createQueue = require('createQueue');
-const copyFromDataLayer = require('copyFromDataLayer');
+const generateRandom = require('generateRandom');
 const getTimestampMillis = require('getTimestampMillis');
 
-// Check if ID already exists in dataLayer for this pageload
-// Only reuse if it's a valid string with the expected format
-let uniqueId = copyFromDataLayer('gtm.uniqueEventId');
+const GLOBAL_CACHE_KEY = '__th_unique_page_id';
 
-// Validate the existing ID - must be a string with the timestamp-random-random format
-const isValidId = uniqueId && typeof uniqueId === 'string' && uniqueId.indexOf('-') > 0;
-
-// If no valid ID exists, generate a new one
-if (!isValidId) {
-  // Generate a globally unique ID using timestamp and multiple random numbers
+/**
+ * Generates a pseudo-UUID v4.
+ * Uses timestamp and random components to ensure high collision resistance.
+ * Format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+ */
+const generateUUID = () => {
   const timestamp = getTimestampMillis();
-  const randomNum1 = generateRandom(100000, 999999);
-  const randomNum2 = generateRandom(100000, 999999);
-  uniqueId = timestamp + '-' + randomNum1 + '-' + randomNum2;
+  
+  // Helper to generate a random hex string of length n
+  const hex = (len) => {
+    let s = '';
+    const chars = '0123456789abcdef';
+    for (let i = 0; i < len; i++) {
+        const r = generateRandom(0, 15);
+        s += chars.charAt(r);
+    }
+    return s;
+  };
 
-  // Push to dataLayer to store for this pageload
-  const dataLayerPush = createQueue('dataLayer');
-  dataLayerPush({
-    'gtm.uniqueEventId': uniqueId
-  });
-} else if (data.setGtmProperty) {
-  // If valid ID exists and user wants to ensure it's set, push to dataLayer
-  const dataLayerPush = createQueue('dataLayer');
-  dataLayerPush({
-    'gtm.uniqueEventId': uniqueId
-  });
+  // Incorporate timestamp into the first block (8 chars)
+  // detailed timestamp allows for chronological sorting if needed
+  const timeHex = timestamp.toString(16).padStart(12, '0').slice(-8);
+  
+  return (
+    timeHex + '-' +
+    hex(4) + '-' +
+    '4' + hex(3) + '-' + // Version 4 identifier
+    hex(4) + '-' +       // Variant
+    hex(12)
+  );
+};
+
+// 1. Try to get from Window Cache (Fastest, Synchronous, Stable)
+// This prevents race conditions where multiple variable references 
+// generate different IDs before the DataLayer updates.
+let uniqueId = copyFromWindow(GLOBAL_CACHE_KEY);
+
+if (!uniqueId) {
+  // 2. Generate New ID
+  uniqueId = generateUUID();
+  
+  // 3. Cache immediately to Window
+  setInWindow(GLOBAL_CACHE_KEY, uniqueId);
+  
+  // 4. Optional: Push to DataLayer (Asynchronous Side Effect)
+  if (data.setGtmProperty) {
+     const dataLayerPush = createQueue('dataLayer');
+     dataLayerPush({
+       'gtm.uniqueEventId': uniqueId
+     });
+  }
 }
 
-// Return the unique ID
 return uniqueId;
 
 
@@ -130,32 +157,45 @@ ___WEB_PERMISSIONS___
                     "boolean": false
                   }
                 ]
-              }
-            ]
-          }
-        }
-      ]
-    },
-    "clientAnnotations": {
-      "isEditedByUser": true
-    },
-    "isRequired": true
-  },
-  {
-    "instance": {
-      "key": {
-        "publicId": "read_data_layer",
-        "versionId": "1"
-      },
-      "param": [
-        {
-          "key": "keyPatterns",
-          "value": {
-            "type": 2,
-            "listItem": [
+              },
               {
-                "type": 1,
-                "string": "gtm.uniqueEventId"
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "__th_unique_page_id"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
               }
             ]
           }

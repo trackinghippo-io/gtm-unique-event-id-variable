@@ -83,27 +83,23 @@ dataLayer.push({
 ## Technical Details
 
 ### ID Format
-The generated ID follows the format: `{timestamp}-{random1}-{random2}`
-- **timestamp**: Unix timestamp in milliseconds (13 digits)
-- **random1**: 6-digit random number
-- **random2**: 6-digit random number
+The generated ID follows a pseudo-UUID v4 format: `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`
+It incorporates the current timestamp into the first segment to ensure chronological sorting capability while maintaining high collision resistance.
 
-Example: `1699660800000-123456-789012`
-
-This format ensures global uniqueness across all browsers and users by combining:
-- Time-based uniqueness (millisecond precision)
-- Two independent random components (1 trillion possible combinations per millisecond)
+Example: `18ba7c40-a1b2-4c3d-8e5f-1234567890ab`
 
 ### Storage
-- Uses GTM `dataLayer`
-- Only persists for the current page load
-- Resets on each new page load
-- No browser storage required
+- **Primary Storage**: Uses a global window variable (`window.__th_unique_page_id`) to cache the ID. This ensures:
+  - Zero race conditions (stable ID even if variable is referenced multiple times instantly).
+  - High performance (synchronous access).
+- **DataLayer**: Optionally pushes the ID to `dataLayer` (as `gtm.uniqueEventId`) for compatibility with other tags/triggers.
+- **Persistence**: Only persists for the current page load. Resets on reload.
 
 ### Permissions
 The template requires the following GTM permissions:
-- **Access Globals**: To access and modify the dataLayer
-- **Read Data Layer**: To read the `gtm.uniqueEventId` value
+- **Access Globals**: 
+  - `dataLayer` (Read/Write)
+  - `__th_unique_page_id` (Read/Write) - used for caching the ID.
 
 ## Privacy Considerations
 
