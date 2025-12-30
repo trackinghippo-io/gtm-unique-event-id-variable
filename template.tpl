@@ -10,8 +10,8 @@ ___INFO___
 
 {
   "type": "MACRO",
-  "id": "cvt_temp_public_id",
-  "version": 1,
+  "id": "cvt_trackinghippo_dj8w83jsxnu83",
+  "version": 2,
   "securityGroups": [],
   "displayName": "Unique Event ID by TrackingHippo.io",
   "description": "Generates a unique event ID per pageload that is stored in the GTM dataLayer and available via gtm.uniqueEventId. The ID is generated once per page load.",
