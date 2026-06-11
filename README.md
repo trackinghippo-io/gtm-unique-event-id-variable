@@ -1,17 +1,22 @@
 # GTM Unique Event ID Variable
 
-A Google Tag Manager (GTM) variable template that generates a unique event ID per pageload stored in the GTM dataLayer and accessible via `gtm.uniqueEventId`.
+A Google Tag Manager (GTM) variable template that generates a unique ID for **every dataLayer event**, while guaranteeing that all tags firing on the same event resolve the identical value.
 
 ## Overview
 
-This GTM variable template creates a unique identifier for each page load using the GTM dataLayer. A new ID is generated on every page load, making it perfect for tracking individual page views or events within a session.
+This variable combines a per-pageload UUID with GTM's built-in per-event counter (`gtm.uniqueEventId`, which GTM stamps on every dataLayer message). The result is an ID that is:
+
+- **Unique per event instance** — two Purchase events on the same page get two different IDs
+- **Stable within an event** — every tag that fires on the same event (e.g. a browser Meta Pixel tag and a server-bound GA4 tag) resolves the exact same value
+
+This makes it suitable as a deduplication key for browser/server setups, such as Meta's `event_id` for Pixel + Conversions API. Meta requires the `event_id` to be unique per event instance and identical between the browser and server copy of that event — reusing one ID for all events on a page breaks deduplication and inflates conversion counts.
 
 ## Features
 
-- **Globally unique ID**: Generates a unique ID for each page load that is unique across all browsers and users
-- **Per-pageload generation**: New ID created on every page load
-- **DataLayer storage**: Stores the ID in the GTM dataLayer for the current page session
-- **Automatic dataLayer integration**: Optionally sets `gtm.uniqueEventId` in the dataLayer
+- **Globally unique ID**: UUID base unique across all browsers, users, and page loads
+- **Per-event granularity**: Each dataLayer event gets its own ID via GTM's event counter
+- **Deterministic within an event**: All references during one event resolve the same value — safe for browser + server deduplication
+- **Chronologically sortable**: The UUID base incorporates the page-load timestamp
 
 ## Installation
 
@@ -39,96 +44,75 @@ This GTM variable template creates a unique identifier for each page load using 
 1. In GTM, go to **Variables** and click **New**
 2. Click **Variable Configuration**
 3. Select **Unique Event ID** from the Custom category
-4. Configure the settings:
-   - **Set gtm.uniqueEventId property**: Check to automatically populate `gtm.uniqueEventId` in the dataLayer
-5. Name your variable (e.g., "Unique Event ID")
-6. Save the variable
+4. Name your variable (e.g., "Unique Event ID")
+5. Save the variable
 
 ### Using the Variable
 
-Once created, you can use this variable in any tag, trigger, or other variable:
-
-- Reference it as `{{Unique Event ID}}` (or whatever name you gave it)
-- If you enabled "Set gtm.uniqueEventId property", you can also access it via the dataLayer variable `gtm.uniqueEventId`
+Once created, reference it as `{{Unique Event ID}}` (or whatever name you gave it) in any tag, trigger, or other variable.
 
 ### Example Use Cases
 
-**1. Send with Google Analytics events:**
-```javascript
-// The ID will be available in gtm.uniqueEventId
-// Use it as a custom dimension for per-pageload tracking
-```
+**1. Meta Pixel + Conversions API deduplication:**
+Use `{{Unique Event ID}}` as the `event_id` in your browser-side Meta Pixel tag, and pass the same variable to your server-side setup (e.g. as a parameter on the GA4 tag feeding server-side GTM). Both copies of the event carry the same ID, and different events on the same page carry different IDs — exactly what Meta's deduplication requires.
 
-**2. Track page views uniquely:**
-```javascript
-// Each page load gets a new unique ID
-// Perfect for identifying individual page views within a session
-```
+**2. Joining events across systems:**
+Attach the ID to events sent to multiple analytics destinations to join them later in your data warehouse.
 
-**3. Custom event tracking:**
-```javascript
-dataLayer.push({
-  'event': 'custom_event',
-  'uniqueId': {{Unique Event ID}}
-});
-```
-
-## Configuration Options
-
-### Set gtm.uniqueEventId property
-- **Default**: Checked (enabled)
-- **Purpose**: Automatically adds the unique ID to `gtm.uniqueEventId` in the dataLayer
-- **When to disable**: If you only want to use the variable directly and don't need it in the dataLayer
+**3. Debugging duplicate triggers:**
+Because the ID embeds GTM's event counter, two firings of the same tag on one page are distinguishable.
 
 ## Technical Details
 
 ### ID Format
-The generated ID follows a pseudo-UUID v4 format: `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`
-It incorporates the current timestamp into the first segment to ensure chronological sorting capability while maintaining high collision resistance.
 
-Example: `18ba7c40-a1b2-4c3d-8e5f-1234567890ab`
+`<pageload-uuid>-<event-counter>`
+
+- The base is a pseudo-UUID v4 (`xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`) generated once per page load, with the current timestamp encoded in the first segment for chronological sorting.
+- The suffix is GTM's internal `gtm.uniqueEventId` counter for the event being processed (falls back to `0` if unavailable).
+
+Example: `18ba7c40-a1b2-4c3d-8e5f-1234567890ab-12`
 
 ### Storage
-- **Primary Storage**: Uses a global window variable (`window.__th_unique_page_id`) to cache the ID. This ensures:
-  - Zero race conditions (stable ID even if variable is referenced multiple times instantly).
-  - High performance (synchronous access).
-- **DataLayer**: Optionally pushes the ID to `dataLayer` (as `gtm.uniqueEventId`) for compatibility with other tags/triggers.
-- **Persistence**: Only persists for the current page load. Resets on reload.
+
+- **Window cache**: The UUID base is cached in `window.__th_unique_page_id` so that all variable references on the page share the same base (zero race conditions, synchronous access).
+- **Persistence**: Only persists for the current page load. Resets on reload. In single-page applications the base stays constant across virtual pageviews, but the event counter still makes every event's ID unique.
 
 ### Permissions
+
 The template requires the following GTM permissions:
-- **Access Globals**: 
-  - `dataLayer` (Read/Write)
-  - `__th_unique_page_id` (Read/Write) - used for caching the ID.
+- **Access Globals**: `__th_unique_page_id` (Read/Write) — caches the per-pageload UUID base
+- **Reads Data Layer**: `gtm.uniqueEventId` — GTM's built-in per-event counter
 
 ## Privacy Considerations
 
-- The unique ID is generated and stored only in the GTM dataLayer for the current page load
-- No data is sent to external servers by this template
+- The ID is generated locally; no data is sent to external servers by this template
 - The ID does not persist across page loads or sessions
-- No browser storage is used
+- No browser storage (cookies, localStorage) is used
 - Consider your local privacy laws (GDPR, CCPA, etc.) when using tracking identifiers
 
 ## Browser Compatibility
 
-This template works in all browsers that support:
-- Google Tag Manager (all modern browsers)
+This template works in all browsers that support Google Tag Manager (all modern browsers).
 
 ## Troubleshooting
 
-### ID is the same across multiple page loads
-- This is expected behavior - each page load should generate a new unique ID
-- If the ID is persisting, check if you have caching or single-page application logic that's preventing a full page reload
+### The ID is different for each event on the same page
+- This is expected behavior — the whole point of the variable is that each event instance gets its own ID. The UUID portion before the final segment stays constant for the page load.
 
-### gtm.uniqueEventId is undefined
-- Ensure "Set gtm.uniqueEventId property" is checked in the variable configuration
-- Verify the variable fires before you try to access the value
-- Check that the dataLayer is available
+### Two tags on the same event got different IDs
+- Ensure both tags reference the same variable and fire on the same trigger/event. Tags firing on *different* dataLayer events (e.g. a custom event pushed twice) correctly receive different IDs.
 
-### ID is different for each event on the same page
-- The ID should be consistent within a single page load
-- Ensure you're using the same variable reference
-- Check if the variable is being called multiple times correctly
+### Meta still reports duplicate events
+- Verify the server-side event carries the byte-identical ID as the browser event (check the `event_id` in Meta Events Manager's event details for both the Browser and Server source).
+- Make sure the server-side pipeline reads the ID from the event payload rather than generating its own.
+
+## Migration from v1/v2 (per-pageload IDs)
+
+Earlier versions generated one ID per page load and reused it for every event, which breaks per-event deduplication. After updating:
+
+- The returned value now ends in `-<n>` where `n` is GTM's event counter.
+- The **Set gtm.uniqueEventId property** option was removed. It pushed a custom value into `gtm.uniqueEventId`, which collides with GTM's identically-named internal key; read the variable directly instead.
 
 ## Contributing
 

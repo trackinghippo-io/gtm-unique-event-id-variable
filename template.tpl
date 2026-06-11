@@ -14,7 +14,7 @@ ___INFO___
   "version": 1,
   "securityGroups": [],
   "displayName": "Unique Event ID by TrackingHippo.io",
-  "description": "Generates a unique event ID per pageload that is stored in the GTM dataLayer and available via gtm.uniqueEventId. The ID is generated once per page load.",
+  "description": "Generates a unique event ID per dataLayer event. Combines a per-pageload UUID with GTM's built-in event counter, so every event instance gets its own ID while all tags firing on the same event resolve the same value (required for browser/server deduplication, e.g. Meta event_id).",
   "containerContexts": [
     "WEB"
   ],
@@ -26,23 +26,14 @@ ___INFO___
 
 ___TEMPLATE_PARAMETERS___
 
-[
-  {
-    "type": "CHECKBOX",
-    "name": "setGtmProperty",
-    "checkboxText": "Set gtm.uniqueEventId property",
-    "simpleValueType": true,
-    "defaultValue": true,
-    "help": "If checked, sets the unique event ID to gtm.uniqueEventId in the dataLayer."
-  }
-]
+[]
 
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
 const copyFromWindow = require('copyFromWindow');
 const setInWindow = require('setInWindow');
-const createQueue = require('createQueue');
+const copyFromDataLayer = require('copyFromDataLayer');
 const generateRandom = require('generateRandom');
 const getTimestampMillis = require('getTimestampMillis');
 
@@ -55,7 +46,7 @@ const GLOBAL_CACHE_KEY = '__th_unique_page_id';
  */
 const generateUUID = () => {
   const timestamp = getTimestampMillis();
-  
+
   // Helper to generate a random hex string of length n
   const hex = (len) => {
     let s = '';
@@ -67,23 +58,14 @@ const generateUUID = () => {
     return s;
   };
 
-  // Incorporate timestamp into the first block (8 chars)
-  // detailed timestamp allows for chronological sorting if needed
+  // Incorporate timestamp into the first block (8 chars) so IDs sort
+  // chronologically. Manual padding for compatibility (no padStart).
   let timeHex = timestamp.toString(16);
-  // Manual padding for compatibility (no padStart)
   while (timeHex.length < 8) {
     timeHex = '0' + timeHex;
   }
-  // Ensure we only take the last 8 chars if it's somehow longer (unlikely for current timestamps)
-  // or exactly the 8 we need.
-  // Actually, we want to align it such that it fills the block. 
-  // Let's just ensure it's at least 8 chars long with leading zeros, then take the last 8.
-  if (timeHex.length < 8) {
-      // already padded above
-  } else {
-      timeHex = timeHex.slice(-8);
-  }
-  
+  timeHex = timeHex.slice(-8);
+
   return (
     timeHex + '-' +
     hex(4) + '-' +
@@ -93,28 +75,25 @@ const generateUUID = () => {
   );
 };
 
-// 1. Try to get from Window Cache (Fastest, Synchronous, Stable)
-// This prevents race conditions where multiple variable references 
-// generate different IDs before the DataLayer updates.
-let uniqueId = copyFromWindow(GLOBAL_CACHE_KEY);
+// Stable per-pageload base ID, cached on window so every reference of this
+// variable resolves the same base even when multiple tags evaluate it
+// simultaneously (zero race conditions).
+let pageId = copyFromWindow(GLOBAL_CACHE_KEY);
 
-if (!uniqueId) {
-  // 2. Generate New ID
-  uniqueId = generateUUID();
-  
-  // 3. Cache immediately to Window
-  setInWindow(GLOBAL_CACHE_KEY, uniqueId);
-  
-  // 4. Optional: Push to DataLayer (Asynchronous Side Effect)
-  if (data.setGtmProperty) {
-     const dataLayerPush = createQueue('dataLayer');
-     dataLayerPush({
-       'gtm.uniqueEventId': uniqueId
-     });
-  }
+if (!pageId) {
+  pageId = generateUUID();
+  setInWindow(GLOBAL_CACHE_KEY, pageId);
 }
 
-return uniqueId;
+// GTM assigns an incrementing gtm.uniqueEventId to every dataLayer event.
+// Appending it makes the returned ID unique per event instance, while all
+// tags firing on the same event still resolve the identical value. Without
+// this suffix every event on the page would share one ID, which breaks
+// browser/server deduplication (e.g. Meta event_id).
+const eventCounter = copyFromDataLayer('gtm.uniqueEventId');
+const suffix = (eventCounter || eventCounter === 0) ? eventCounter : 0;
+
+return pageId + '-' + suffix;
 
 
 ___WEB_PERMISSIONS___
@@ -132,45 +111,6 @@ ___WEB_PERMISSIONS___
           "value": {
             "type": 2,
             "listItem": [
-              {
-                "type": 3,
-                "mapKey": [
-                  {
-                    "type": 1,
-                    "string": "key"
-                  },
-                  {
-                    "type": 1,
-                    "string": "read"
-                  },
-                  {
-                    "type": 1,
-                    "string": "write"
-                  },
-                  {
-                    "type": 1,
-                    "string": "execute"
-                  }
-                ],
-                "mapValue": [
-                  {
-                    "type": 1,
-                    "string": "dataLayer"
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  },
-                  {
-                    "type": 8,
-                    "boolean": true
-                  },
-                  {
-                    "type": 8,
-                    "boolean": false
-                  }
-                ]
-              },
               {
                 "type": 3,
                 "mapKey": [
@@ -219,13 +159,86 @@ ___WEB_PERMISSIONS___
       "isEditedByUser": true
     },
     "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "read_data_layer",
+        "versionId": "1"
+      },
+      "param": [
+        {
+          "key": "keyPatterns",
+          "value": {
+            "type": 2,
+            "listItem": [
+              {
+                "type": 1,
+                "string": "gtm.uniqueEventId"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "clientAnnotations": {
+      "isEditedByUser": true
+    },
+    "isRequired": true
   }
 ]
 
 
 ___TESTS___
 
-scenarios: []
+scenarios:
+- name: Combines cached page ID with the GTM event counter
+  code: |-
+    mock('copyFromWindow', (key) => 'page-uuid');
+    mock('copyFromDataLayer', (key) => key === 'gtm.uniqueEventId' ? 42 : undefined);
+
+    const result = runCode({});
+
+    assertThat(result).isEqualTo('page-uuid-42');
+- name: Same event counter yields the same ID across multiple evaluations
+  code: |-
+    mock('copyFromWindow', (key) => 'page-uuid');
+    mock('copyFromDataLayer', (key) => 7);
+
+    const first = runCode({});
+    const second = runCode({});
+
+    assertThat(first).isEqualTo(second);
+- name: Different event counters yield different IDs
+  code: |-
+    mock('copyFromWindow', (key) => 'page-uuid');
+
+    mock('copyFromDataLayer', (key) => 1);
+    const first = runCode({});
+
+    mock('copyFromDataLayer', (key) => 2);
+    const second = runCode({});
+
+    assertThat(first).isNotEqualTo(second);
+- name: Generates and caches a page ID when none exists
+  code: |-
+    let stored;
+    mock('copyFromWindow', (key) => undefined);
+    mock('setInWindow', (key, value) => { stored = value; });
+    mock('copyFromDataLayer', (key) => 7);
+
+    const result = runCode({});
+
+    assertThat(stored).isNotEqualTo(undefined);
+    assertThat(result).isEqualTo(stored + '-7');
+- name: Falls back to suffix 0 when the event counter is unavailable
+  code: |-
+    mock('copyFromWindow', (key) => 'page-uuid');
+    mock('copyFromDataLayer', (key) => undefined);
+
+    const result = runCode({});
+
+    assertThat(result).isEqualTo('page-uuid-0');
 
 
 ___NOTES___
