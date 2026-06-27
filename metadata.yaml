@@ -1,6 +1,8 @@
 homepage: "https://trackinghippo.io"
 documentation: "https://github.com/trackinghippo-io/gtm-unique-event-id-variable/blob/main/README.md"
 versions:
+  - sha: e31c8e9e08a2868449a1371e81fae0a399689294
+    changeNotes: Added the TrackingHippo.io brand icon to the template. No functional changes.
   - sha: 08189cfa7eca0a1ebab4a79e52f73fee00489494
     changeNotes: Event IDs are now unique per dataLayer event (page-load UUID + GTM event counter) instead of per page load, fixing browser/server deduplication (e.g. Meta event_id). Removed the gtm.uniqueEventId dataLayer push option.
   - sha: 8b23cda0d763d7306b73ee1c6134eb7127d21d3d
